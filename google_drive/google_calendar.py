@@ -6,6 +6,9 @@
 from __future__ import absolute_import
 import logging
 
+from django.conf import settings
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from opaque_keys.edx.keys import CourseKey
 from django import utils
 from xblock.core import XBlock
 from xblock.fields import Integer, Scope, String
@@ -65,13 +68,20 @@ class GoogleCalendarBlock(XBlock, PublishEventMixin):
         """
         Player view, displayed to the student
         """
+        course_id = '+'.join(('course-v1:' + self.location.org, self.location.course, self.location.run))
+        course_key = CourseKey.from_string(course_id)
+        course_overview = CourseOverview.objects.get(id=course_key)
+        if course_overview.is_gcal_created and self.calendar_id == DEFAULT_CALENDAR_ID or self.calendar_id == course_overview.gcal_id:
+            gcal_id = course_overview.gcal_id
+        else:
+            gcal_id = self.calendar_id
         fragment = Fragment()
 
         fragment.add_content(RESOURCE_LOADER.render_django_template(
             CALENDAR_TEMPLATE,
             context={
                 "mode": self.views[self.default_view][1],
-                "src": self.calendar_id,
+                "src": gcal_id,
                 "title": self.display_name,
                 "language": utils.translation.get_language(),
             },
@@ -89,6 +99,13 @@ class GoogleCalendarBlock(XBlock, PublishEventMixin):
         """
         Editing view in Studio
         """
+        course_id = '+'.join(('course-v1:' + self.location.org, self.location.course, self.location.run))
+        course_key = CourseKey.from_string(course_id)
+        course_overview = CourseOverview.objects.get(id=course_key)
+        if course_overview.is_gcal_created and self.calendar_id == DEFAULT_CALENDAR_ID or self.calendar_id == course_overview.gcal_id:
+            self.fields['calendar_id']._default = course_overview.gcal_id
+        else:
+            self.fields['calendar_id']._default = self.calendar_id
         fragment = Fragment()
         # Need to access protected members of fields to get their default value
         default_name = self.fields['display_name']._default  # pylint: disable=protected-access,unsubscriptable-object
