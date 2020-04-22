@@ -6,6 +6,9 @@
 from __future__ import absolute_import
 import logging
 
+from django.conf import settings
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from opaque_keys.edx.keys import CourseKey
 from django import utils
 from xblock.core import XBlock
 from xblock.fields import Integer, Scope, String
@@ -65,13 +68,14 @@ class GoogleCalendarBlock(XBlock, PublishEventMixin):
         """
         Player view, displayed to the student
         """
+        gcal_id = get_gcal_id(self.location.org, self.location.course, self.location.run, self.calendar_id)
         fragment = Fragment()
 
         fragment.add_content(RESOURCE_LOADER.render_django_template(
             CALENDAR_TEMPLATE,
             context={
                 "mode": self.views[self.default_view][1],
-                "src": self.calendar_id,
+                "src": gcal_id,
                 "title": self.display_name,
                 "language": utils.translation.get_language(),
             },
@@ -89,6 +93,7 @@ class GoogleCalendarBlock(XBlock, PublishEventMixin):
         """
         Editing view in Studio
         """
+        self.fields['calendar_id']._default = get_gcal_id(self.location.org, self.location.course, self.location.run, self.calendar_id)
         fragment = Fragment()
         # Need to access protected members of fields to get their default value
         default_name = self.fields['display_name']._default  # pylint: disable=protected-access,unsubscriptable-object
@@ -133,3 +138,18 @@ class GoogleCalendarBlock(XBlock, PublishEventMixin):
         A canned scenario for display in the workbench.
         """
         return [("Google Calendar scenario", "<vertical_demo><google-calendar/></vertical_demo>")]
+
+
+def get_gcal_id(org, code, run, cal_id):
+    """
+    Returns a Google calendar ID if it has one / Returns default calendar ID
+    """
+    course_id = '+'.join(('course-v1:' + org, code, run))
+    course_key = CourseKey.from_string(course_id)
+    course_overview = CourseOverview.objects.get(id=course_key)
+    if course_overview.is_gcal_created and cal_id == DEFAULT_CALENDAR_ID or cal_id == course_overview.gcal_id:
+        gcal_id = course_overview.gcal_id
+    else:
+        gcal_id = DEFAULT_CALENDAR_ID
+
+    return gcal_id
