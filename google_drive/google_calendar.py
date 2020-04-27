@@ -150,6 +150,6 @@ def get_gcal_id(org, code, run, cal_id):
     if course_overview.is_gcal_created and cal_id == DEFAULT_CALENDAR_ID or cal_id == course_overview.gcal_id:
         gcal_id = course_overview.gcal_id
     else:
-        gcal_id = DEFAULT_CALENDAR_ID
+        gcal_id = cal_id
 
     return gcal_id
