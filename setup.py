@@ -32,7 +32,7 @@ setup(
     install_requires=[
         'mako',
         'XBlock',
-        'xblock-utils',
+        'xblock-utils==1.2.0',
     ],
     dependency_links=[
         'http://github.com/edx-solutions/xblock-utils/tarball/master#egg=xblock-utils',
